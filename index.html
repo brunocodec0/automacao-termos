@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Documentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bibliotecas para manipulação de arquivos -->
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.2.0/dist/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.47.2/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .file-input-label {
+            transition: all 0.2s ease-in-out;
+        }
+        .file-input-label.has-file {
+            background-color: #10B981; /* green-500 */
+            border-color: #059669; /* green-600 */
+            color: white;
+        }
+        .file-input-label.has-file .file-name {
+            display: inline;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+        <div class="text-center mb-8">
+			<img src="https://i.imgur.com/LU3iDiT.png" alt="Logo da empresa" class="mx-auto mb-4">
+            <p class="text-gray-500 mt-2">Faça o upload do modelo e da planilha de dados para gerar os arquivos.</p>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Passo 1: Upload do Modelo DOCX -->
+            <div>
+                <label class="text-lg font-semibold text-gray-700 mb-2 block">Passo 1: Carregue o modelo</label>
+                <label for="template-file" id="template-label" class="file-input-label flex items-center justify-center w-full px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100">
+                     <svg class="w-8 h-8 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span class="font-medium">Clique para carregar o arquivo de modelo <span class="font-bold">.docx</span></span>
+                    <span class="file-name hidden font-semibold ml-2 text-sm"></span>
+                </label>
+                <input type="file" id="template-file" class="hidden" accept=".docx">
+            </div>
+
+            <!-- Passo 2: Upload da Planilha XLSX -->
+            <div>
+                <label class="text-lg font-semibold text-gray-700 mb-2 block">Passo 2: Carregue a planilha</label>
+                <label for="data-file" id="data-label" class="file-input-label flex items-center justify-center w-full px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100">
+                     <svg class="w-8 h-8 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <span class="font-medium">Clique para carregar a planilha de dados <span class="font-bold">.xlsx</span></span>
+                    <span class="file-name hidden font-semibold ml-2 text-sm"></span>
+                </label>
+                <input type="file" id="data-file" class="hidden" accept=".xlsx, .xls">
+            </div>
+
+             <!-- Passo 3: Linhas específicas (opcional) -->
+            <div>
+                <label for="row-numbers" class="text-lg font-semibold text-gray-700 mb-2 block">Passo 3 (Opcional): Linhas específicas</label>
+                <input type="text" id="row-numbers" placeholder="Ex: 2, 5, 10-15 (deixe em branco para todas)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <p class="text-xs text-gray-500 mt-1">Insira os números das linhas da planilha que deseja processar, separados por vírgula. A linha 1 é o cabeçalho.</p>
+            </div>
+
+            <!-- Botão de Geração -->
+            <div class="pt-4">
+                <button id="generate-btn" class="w-full bg-[#5a2a8b] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#4a226e] focus:outline-none focus:ring-4 focus:ring-purple-300 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center">
+                    <svg id="btn-icon" class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4 4v12"></path></svg>
+                    <svg id="loading-spinner" class="hidden animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="btn-text">Gerar e Baixar ZIP</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Área de Status/Log -->
+        <div id="status" class="mt-8 text-center text-sm text-gray-600"></div>
+
+    </div>
+
+    <script>
+        const templateFileInput = document.getElementById('template-file');
+        const templateLabel = document.getElementById('template-label');
+        const dataFileInput = document.getElementById('data-file');
+        const dataLabel = document.getElementById('data-label');
+        const rowNumbersInput = document.getElementById('row-numbers');
+        const generateBtn = document.getElementById('generate-btn');
+        const statusDiv = document.getElementById('status');
+        const btnText = document.getElementById('btn-text');
+        const btnIcon = document.getElementById('btn-icon');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // Função para atualizar a aparência do label do input de arquivo
+        const updateFileLabel = (input, label) => {
+            const file = input.files[0];
+            if (file) {
+                label.classList.add('has-file');
+                label.querySelector('.file-name').textContent = file.name;
+            } else {
+                label.classList.remove('has-file');
+                label.querySelector('.file-name').textContent = '';
+            }
+        };
+        
+        templateFileInput.addEventListener('change', () => updateFileLabel(templateFileInput, templateLabel));
+        dataFileInput.addEventListener('change', () => updateFileLabel(dataFileInput, dataLabel));
+
+        // Função para ler um arquivo como ArrayBuffer
+        const readFileAsArrayBuffer = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        };
+
+        // Função para formatar data (de YYYYMMDD ou número do Excel para DD/MM/YYYY)
+        const formatDate = (dateValue) => {
+            if (!dateValue) return '';
+            if (typeof dateValue === 'number' && dateValue > 1) {
+                const date = new Date((dateValue - 25569) * 86400 * 1000);
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const year = date.getUTCFullYear();
+                return `${day}/${month}/${year}`;
+            }
+            const dateStr = String(dateValue);
+            if (/^\d{8}$/.test(dateStr)) {
+                const year = dateStr.substring(0, 4);
+                const month = dateStr.substring(4, 6);
+                const day = dateStr.substring(6, 8);
+                return `${day}/${month}/${year}`;
+            }
+            if (/^\d{4}\/\d{2}\/\d{2}$/.test(dateStr)) {
+                const parts = dateStr.split('/');
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateValue;
+        };
+        
+        // Função para parsear a entrada de linhas
+        const parseRowNumbers = (input, maxRows) => {
+            if (!input.trim()) {
+                return Array.from({ length: maxRows }, (_, i) => i);
+            }
+            const indices = new Set();
+            const parts = input.split(',');
+            parts.forEach(part => {
+                part = part.trim();
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(num => parseInt(num.trim(), 10));
+                    if (!isNaN(start) && !isNaN(end) && start <= end) {
+                        for (let i = start; i <= end; i++) {
+                            if(i > 1) indices.add(i - 2);
+                        }
+                    }
+                } else {
+                    const num = parseInt(part, 10);
+                    if (!isNaN(num) && num > 1) {
+                        indices.add(num - 2);
+                    }
+                }
+            });
+            return Array.from(indices).filter(i => i < maxRows);
+        };
+
+        generateBtn.addEventListener('click', async () => {
+            const templateFile = templateFileInput.files[0];
+            const dataFile = dataFileInput.files[0];
+            const rowInput = rowNumbersInput.value;
+
+            if (!templateFile) {
+                statusDiv.textContent = 'Por favor, carregue o arquivo de modelo (.docx).';
+                statusDiv.className = 'mt-8 text-center text-sm text-red-600 font-semibold';
+                return;
+            }
+            if (!dataFile) {
+                statusDiv.textContent = 'Por favor, carregue a planilha de dados (.xlsx).';
+                statusDiv.className = 'mt-8 text-center text-sm text-red-600 font-semibold';
+                return;
+            }
+
+            generateBtn.disabled = true;
+            btnText.textContent = 'Processando...';
+            btnIcon.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            statusDiv.textContent = 'Iniciando o processo...';
+            statusDiv.className = 'mt-8 text-center text-sm text-blue-600 font-semibold';
+
+            try {
+                statusDiv.textContent = 'Lendo arquivo de modelo...';
+                const templateBuffer = await readFileAsArrayBuffer(templateFile);
+                
+                statusDiv.textContent = 'Lendo planilha de dados...';
+                const dataBuffer = await readFileAsArrayBuffer(dataFile);
+                
+                const workbook = XLSX.read(dataBuffer, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+                const rowsToProcessIndices = parseRowNumbers(rowInput, data.length);
+
+                if (rowsToProcessIndices.length === 0) {
+                    throw new Error("Nenhuma linha válida selecionada para processamento.");
+                }
+
+                statusDiv.textContent = `Encontrados ${data.length} registros. Gerando ${rowsToProcessIndices.length} documentos...`;
+                
+                const zip = new JSZip();
+                let generatedCount = 0;
+
+                for (const index of rowsToProcessIndices) {
+                     if (index >= data.length) continue;
+
+                    const row = data[index];
+                    const fileName = row.nome_arquivo || `Documento ${row.nome || 'SemNome'}`;
+                    
+                    const pzip = new PizZip(templateBuffer.slice(0));
+                    const doc = new docxtemplater(pzip, { paragraphLoop: true, linebreaks: true });
+                    
+                    // Clona o objeto 'row' para evitar modificar o original
+                    const context = { ...row };
+
+                    // Formata todas as chaves que contêm 'data' no nome
+                    for (const key in context) {
+                        if (key.toLowerCase().includes('data')) {
+                           context[key] = formatDate(context[key]);
+                        }
+                    }
+
+                    doc.render(context);
+
+                    const out = doc.getZip().generate({
+                        type: 'blob',
+                        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    });
+                    
+                    zip.file(`${fileName}.docx`, out);
+                    generatedCount++;
+                    statusDiv.textContent = `Documento ${generatedCount} de ${rowsToProcessIndices.length} adicionado ao ZIP: ${fileName}.docx`;
+                }
+
+                if (generatedCount > 0) {
+                    statusDiv.textContent = 'Compactando os arquivos. Por favor, aguarde...';
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    saveAs(zipBlob, 'Documentos Gerados.zip');
+                    statusDiv.textContent = `Processo concluído! ${generatedCount} documentos foram compactados em Documentos_Gerados.zip.`;
+                    statusDiv.className = 'mt-8 text-center text-sm text-green-600 font-semibold';
+                } else {
+                     throw new Error("Nenhum documento foi gerado.");
+                }
+
+            } catch (error) {
+                console.error('Erro no processo:', error);
+                statusDiv.textContent = `Ocorreu um erro: ${error.message}`;
+                statusDiv.className = 'mt-8 text-center text-sm text-red-600 font-semibold';
+            } finally {
+                generateBtn.disabled = false;
+                btnText.textContent = 'Gerar e Baixar ZIP';
+                btnIcon.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
