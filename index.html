@@ -238,6 +238,7 @@
                            context[key] = formatDate(context[key]);
                         }
                     }
+					context["hoje"] = new Date().toLocaleDateString()
 
                     doc.render(context);
 
@@ -275,3 +276,4 @@
     </script>
 </body>
 </html>
+
